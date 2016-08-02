@@ -1,0 +1,14 @@
+{
+    "__default__":
+    {
+	"mem": "1g",
+	"out": "logs/default.out",
+	"err": "logs/default.err"
+    },
+    "callIBD":
+    {
+	"mem": "40g",
+	"out": "logs/callIBD.out",
+	"err": "logs/callIBD.err"
+    }
+}

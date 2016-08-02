@@ -9,6 +9,7 @@ import sys, gzip
 from math import isnan
 import re
 from optparse import OptionParser
+from itertools import chain
 
 parser = OptionParser(description=description)
 parser.add_option("-b","--ibdfile",dest="ibdfile",help="name of file to read ibd from (or '-' for stdin)",default="-")
@@ -37,20 +38,20 @@ for line in infile:
         currentlist = results[(id1,id2)]
         markremove = [False for x in currentlist]
         for j in range(len(currentlist)):
-             x = currentlist[j]
-             ovlap = x[0]<=end and start<=x[1]
-             # is a gap?
-             gap = ( x[0] <= end+gapthresh ) and ( start <= x[1] + gapthresh )
-             # is shorter than an adjacent segment?
+            x = currentlist[j]
+            ovlap = x[0]<=end and start<=x[1]
+            # is a gap?
+            gap = ( x[0] <= end+gapthresh ) and ( start <= x[1] + gapthresh )
+            # is shorter than an adjacent segment?
              # gaplen is max( start1-end2, start2-end1 ) since the min is negative
-             gap = gap and ( max( x[0]-end, start-x[1] ) < max( end-start, x[1]-x[0] ) )
-             if ovlap or gap:
+            gap = gap and ( max( x[0]-end, start-x[1] ) < max( end-start, x[1]-x[0] ) )
+            if ovlap or gap:
                  # overlap
-                 markremove[j] = True
-                 start = min(x[0],start)
-                 end = max(x[1],end)
+                markremove[j] = True
+                start = min(x[0],start)
+                end = max(x[1],end)
         if sum(markremove):
-             results[(id1,id2)] = [x for x,r in zip(currentlist,markremove) if not r]
+            results[(id1,id2)] = [x for x,r in zip(currentlist,markremove) if not r]
         results[(id1,id2)].append([start,end])
     else:
         results[(id1,id2)] = [[start,end]]
@@ -60,6 +61,7 @@ outfile.write("id1 id2 start end\n")
 for x in results:
     # id1 = x[0]; id2 = x[1]
     for y in results[x]:
-        outfile.write(" ".join(map(str,x) + map(str, y)) + "\n")
+        l = list(chain(map(str,x), map(str,y)))
+        outfile.write(" ".join(l) + "\n")
 
 outfile.close()

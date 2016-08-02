@@ -1,0 +1,5 @@
+unused/*
+*~
+config.json
+.snakemake/*
+logs/*
