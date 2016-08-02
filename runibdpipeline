@@ -1,0 +1,116 @@
+configfile: "config.json"
+
+# chromosome 1-22
+CHROMOSOMES = [str(i) for i in range(1,23)]
+
+# testing 
+#CHROMOSOMES = [str(i) for i in range(20,21)]
+
+SEEDS = ['1', '5', '10']
+
+### CONFIG FILE ###
+# 'ibdcalls' specifies the directory where the ibdcalls are located
+# 'prefix' specifies the prefix the script will append to the output
+# 'plinkfile' specifies the location of plink files (broken up by chr) and the prefix of the plink files
+# 'bin' where the scripts are
+# 'build' the genome build of the data (b36 or b37)
+
+rule all:
+    input:
+        expand(config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.nosparse_cm_finalqc.ibd', chr=CHROMOSOMES)
+	        
+rule remove_gaps:
+    input:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.nosparse_cm.ibd'
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.nosparse_cm_finalqc.ibd'
+    params:     
+        gapthres = 0.4
+    shell:
+        'python {config[bin]}/remove-gaps-fibd.py -b {input[0]} -o {output[0]} -g {params.gapthres}'
+ 
+
+rule convert_to_cM:
+    input:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.nosparse.ibd'
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.nosparse_cm.ibd'
+    params:
+        chromo='{chr}'
+    shell:
+        'Rscript {config[bin]}/interpolate.R {params.chromo} {config[build]} {input} {output}'
+
+rule remove_sparse:
+    input:
+        config['ibdcalls'] + '/' + 'chr{chr}.sparseregions', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.ibd'
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.nosparse.ibd'
+    shell:
+        'python {config[bin]}/remove_sparse.py -s {input[0]} -i {input[1]} > {output[0]}'
+
+rule create_sparseregions:
+    input:
+        config['plinkfile'] + '_{chr}.bim'
+    output:      
+        config['ibdcalls'] + '/' + 'chr{chr}.sparseregions'
+    shell:     
+        'python {config[bin]}/sparse_regions.py -b {input[0]} > {output[0]}'
+    
+rule merge_ibd_segments:
+    input:
+        config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[0] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[0] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[1] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '.relabeled_{chr}_' + SEEDS[1] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[2] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[2] + '.ibd' 
+
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.merged.ibd'
+    params:
+        ibdmerge = '/mnt/gluster/home/halasadi/projects/recent_migration/bin/ibdmerge.jar'
+    shell:
+        'cat {input} | /data/tools/jre1.7.0_25/bin/java -jar {params.ibdmerge} > {output}'
+    
+rule relabelIBD:
+    input:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[0] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[0] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[1] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[1] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[2] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[2] + '.ibd' 
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[0] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[0] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[1] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '.relabeled_{chr}_' + SEEDS[1] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[2] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '.relabeled.{chr}_' + SEEDS[2] + '.ibd' 
+    shell:
+        'python {config[bin]}/rename.py {input[0]} > {output[0]} && '
+        'python {config[bin]}/rename.py {input[1]} > {output[1]} && '
+        'python {config[bin]}/rename.py {input[2]} > {output[2]} && '
+        'python {config[bin]}/rename.py {input[3]} > {output[3]} && '
+        'python {config[bin]}/rename.py {input[4]} > {output[4]} && '
+        'python {config[bin]}/rename.py {input[5]} > {output[5]} '
+
+rule callIBD:
+    input:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.vcf'
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[0] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[0] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[1] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[1] + '.ibd',
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[2] + '.hbd', config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_' + SEEDS[2] + '.ibd' 
+    params:
+        f = config['ibdcalls'] + '/' + config['prefix'] + '_{chr}_',
+        heap = '32',
+        beagle = '/mnt/gluster/home/halasadi/projects/recent_migration/bin/beagle.r1398.jar',
+        nthreads = '4',
+    shell:
+        '/data/tools/jre1.7.0_25/bin/java -Xmx{params.heap}g -jar {params.beagle} gt={input} ibd=true seed={SEEDS[0]} nthreads={params.nthreads} out={params.f}{SEEDS[0]} && ' 
+        '/data/tools/jre1.7.0_25/bin/java -Xmx{params.heap}g -jar {params.beagle} gt={input} ibd=true seed={SEEDS[1]} nthreads={params.nthreads} out={params.f}{SEEDS[1]} && '
+        '/data/tools/jre1.7.0_25/bin/java -Xmx{params.heap}g -jar {params.beagle} gt={input} ibd=true seed={SEEDS[2]} nthreads={params.nthreads} out={params.f}{SEEDS[2]}' 
+    
+rule convert_to_vcf:
+    output:
+        config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.vcf'
+    params:
+        chromo = '{chr}',
+        plink = '/data/tools/plink/plink',
+        out = config['ibdcalls'] + '/' + config['prefix'] + '_{chr}'
+    shell:
+        '{params.plink} --bfile ' + config['plinkfile'] + '_{params.chromo}' + ' --chr {params.chromo} --recode vcf --out {params.out}'
+
+        
