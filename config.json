@@ -1,0 +1,9 @@
+{
+    "ibdcalls": "/mnt/gluster/home/halasadi/projects/recent_migration/data/HOA/ibdcalls",
+    "prefix": "HOA_ASIA_AMERICA",
+    "plinkPrefix": "HOA_ASIA_AMERICA",
+    "plinkDir": "/mnt/gluster/home/halasadi/projects/recent_migration/data/HOA/plink",
+    "bin":"/mnt/gluster/home/halasadi/projects/recent_migration/bin/ibd_data_pipeline",
+    "build":"b37"
+}
+
