@@ -1,7 +1,7 @@
 snakemake --snakefile runibdpipeline \
           --cluster-config cluster.json \
-          -c "qsub -l h_vmem={cluster.mem} -o {cluster.out} -e {cluster.err} -cwd -V" \
-          -j 30 \
+          --cluster 'qsub -l h_vmem={cluster.mem} -l h=\!\("bigmem02"\) -o {cluster.out} -e {cluster.err} -cwd -V ' \
+          -j 50 \
           -p \
           $*
 

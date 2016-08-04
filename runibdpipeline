@@ -47,7 +47,7 @@ rule remove_sparse:
 
 rule create_sparseregions:
     input:
-        config['plinkfile'] + '_{chr}.bim'
+        config['plinkDir'] + '/broken_up_by_chr/' + config['plinkPrefix'] +  '_{chr}.bim'
     output:      
         config['ibdcalls'] + '/' + 'chr{chr}.sparseregions'
     shell:     
@@ -101,6 +101,10 @@ rule callIBD:
         '/data/tools/jre1.7.0_25/bin/java -Xmx{params.heap}g -jar {params.beagle} gt={input} ibd=true seed={SEEDS[2]} nthreads={params.nthreads} out={params.f}{SEEDS[2]}' 
     
 rule convert_to_vcf:
+    input:
+        config['plinkDir'] + '/' + config['plinkPrefix'] + '.bed',
+        config['plinkDir'] + '/' + config['plinkPrefix'] + '.bim',
+        config['plinkDir'] + '/' + config['plinkPrefix'] + '.fam'
     output:
         config['ibdcalls'] + '/' + config['prefix'] + '_{chr}.vcf'
     params:
@@ -108,6 +112,18 @@ rule convert_to_vcf:
         plink = '/data/tools/plink/plink',
         out = config['ibdcalls'] + '/' + config['prefix'] + '_{chr}'
     shell:
-        '{params.plink} --bfile ' + config['plinkfile'] + '_{params.chromo}' + ' --chr {params.chromo} --recode vcf --out {params.out}'
+        '{params.plink} --bfile ' + config['plinkDir'] + '/' + config['plinkPrefix'] + '  --chr {params.chromo} --recode vcf --out {params.out}'
 
-        
+rule break_up_plink:
+    input:
+        config['plinkDir'] + '/' + config['plinkPrefix'] + '.bed',
+        config['plinkDir'] + '/' + config['plinkPrefix'] + '.bim',
+        config['plinkDir'] + '/' + config['plinkPrefix'] + '.fam'
+    output:
+        config['plinkDir'] + '/broken_up_by_chr/' + config['plinkPrefix'] +  '_{chr}.bim'
+    params:
+        chromo = '{chr}',
+        plink = '/data/tools/plink/plink',
+        out = config['plinkDir'] + '/broken_up_by_chr/' + config['plinkPrefix'] +  '_{chr}'
+    shell:
+        '{params.plink} --bfile ' + config['plinkDir'] + '/' + config['plinkPrefix'] + ' --chr {params.chromo} --make-bed --out {params.out}'
